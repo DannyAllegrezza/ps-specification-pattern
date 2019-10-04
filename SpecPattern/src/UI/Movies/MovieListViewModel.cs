@@ -39,9 +39,10 @@ namespace UI.Movies
                 return;
 
             Movie movie = movieOrNothing.Value;
-            Func<Movie, bool> hasCdVersion = Movie.HasCDVersion.Compile();
 
-            if (!hasCdVersion(movie))
+            var specification = new GenericSpecification<Movie>(x => x.ReleaseDate <= DateTime.Now.AddMonths(-6));
+
+            if (!specification.IsSatisfiedBy(movie))
             {
                 MessageBox.Show("The movie doesn't have a CD version", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
@@ -60,9 +61,9 @@ namespace UI.Movies
 
             Movie movie = movieOrNothing.Value;
 
-            Func<Movie,bool> isSuitableForChildren = Movie.IsSuitableForChildren.Compile();
+            var specification = new GenericSpecification<Movie>(x => x.MpaaRating <= MpaaRating.PG);
 
-            if (!isSuitableForChildren(movie))
+            if (!specification.IsSatisfiedBy(movie))
             {
                 MessageBox.Show("The movie is not suitable for children", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
@@ -81,11 +82,12 @@ namespace UI.Movies
 
         private void Search()
         {
-            // here is where our refactor falls apart..
+            var specification = new GenericSpecification<Movie>(x => x.MpaaRating <= MpaaRating.PG);
+            // or pass in the Expression we defined on the movie class..
+            // var specification = new GenericSpecification<Movie>(Movie.HasCDVersion);
 
-            Expression<Func<Movie, bool>> expression = ForKidsOnly ? Movie.IsSuitableForChildren : x => true;
-            Movies = _repository.GetList(expression);
-            //Movies = _repository.GetList(ForKidsOnly, MinimumRating, OnCD);
+            Movies = _repository.GetList(specification);
+
             Notify(nameof(Movies));
         }
     }

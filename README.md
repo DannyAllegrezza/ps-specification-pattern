@@ -165,3 +165,57 @@ The 2 major drawbacks are that:
 
 1. We're only passing in 1 Expression, so we have no easy way to combine the Expressions together for dynamic filtering. 
 2. We have to compile the Expression into a Delegate in the client code. Gnarly.
+
+## Attempt 2: Using a Generic Specification class
+This attempt is only slightly better, but sets us up for where we are going. 
+> Keep in mind that a Specification is a container for **one piece** of domain knowledge that can be reused in different scenarios.
+
+```
+public class GenericSpecification<T>
+{
+    public Expression<Func<T, bool>> Expression { get; }
+
+    public GenericSpecification(Expression<Func<T, bool>> expression)
+    {
+        Expression = expression;
+    }
+
+    public bool IsSatisfiedBy(T entity)
+    {
+        return Expression.Compile().Invoke(entity);
+    }
+}
+```
+
+The repository gets updated as follows:
+
+```
+public IReadOnlyList<Movie> GetList(GenericSpecification<Movie> specification)
+{
+    using (ISession session = SessionFactory.OpenSession())
+    {
+        return session.Query<Movie>()
+            .Where(specification.Expression)
+            .ToList();
+    }
+}
+```
+
+The client code will then `new` up instances of this class..
+
+```
+var specification = new GenericSpecification<Movie>(x => x.ReleaseDate <= DateTime.Now.AddMonths(-6));
+
+if (!specification.IsSatisfiedBy(movie)) { ... }
+
+// old code
+// Func<Movie,bool> isSuitableForChildren = Movie.IsSuitableForChildren.Compile();
+// if (!isSuitableForChildren(movie)) { ... }
+
+```
+
+* This is just a thin wrapper on top of the Expressions we've used in our first attempt. 
+* Has the same problems as our first attempt.
+* Should be avoided, doesn't solve our problem.
+
+

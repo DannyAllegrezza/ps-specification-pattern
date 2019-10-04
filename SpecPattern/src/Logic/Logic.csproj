@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Movies\GenericSpecification.cs" />
     <Compile Include="Movies\MovieRepository.cs" />
     <Compile Include="Utils\Entity.cs" />
     <Compile Include="Movies\Movie.cs" />
