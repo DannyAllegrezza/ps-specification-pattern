@@ -60,3 +60,108 @@ Imagine you have a database that stores Movie data. Something simple, like the t
 
 
 * Duplicating domain knowledge
+
+### Attempt 1: Implementing the Specification Pattern the Naive Way
+Our problems at hand are that our Repository `GetList()` method continues to grow as we tack on filters. 
+
+```
+public IReadOnlyList<Movie> GetList(
+    bool forKidsOnly,
+    double minimumRating,
+    bool availableOnCD)
+{
+    using (ISession session = SessionFactory.OpenSession())
+    {
+        return session.Query<Movie>()
+            .Where(x => 
+                (x.MpaaRating <= MpaaRating.PG || !forKidsOnly) &&
+                x.Rating >= minimumRating &&
+                (x.ReleaseDate <= DateTime.Now.AddMonths(-6) || !availableOnCD))
+            .ToList();
+    }
+}
+```
+
+This is really common and something I've seen in many production applications. To solve this, our first naive attempt is to apply a basic version of the Specification Pattern through plain ol' C# Expressions. Let's remove those filters and just take in a single `Expression`
+
+```
+public IReadOnlyList<Movie> GetList(Expression<Func<Movie,bool>> expression)
+{
+    using (ISession session = SessionFactory.OpenSession())
+    {
+        return session.Query<Movie>()
+            .Where(expression)
+            .ToList();
+    }
+}
+```
+
+On our `Movie` domain object, let's add these two filters as `Expression`s. 
+
+```
+    public class Movie : Entity
+    {
+        public static readonly Expression<Func<Movie, bool>> IsSuitableForChildren = x => x.MpaaRating <= MpaaRating.PG;
+
+        public static readonly Expression<Func<Movie, bool>> HasCDVersion = x => x.ReleaseDate <= DateTime.Now.AddMonths(-6);
+		
+		/ ** We can get rid of the old Methods
+		public virtual bool IsSuitableForChildren()
+        {
+            return MpaaRating <= MpaaRating.PG;
+        }
+
+        public virtual bool HasCDVersion()
+        {
+            return ReleaseDate <= DateTime.Now.AddMonths(-6);
+        }
+		** /
+	}
+```
+
+Now our client `MovieListViewModel` class must be updated. Previously, it had duplicated domain knowledge which we tried to encapsulate into the 2 methods above which are commented out.
+
+```
+private void BuyChildTicket(long movieId)
+{
+    Maybe<Movie> movieOrNothing = _repository.GetOne(movieId);
+    if (movieOrNothing.HasNoValue)
+        return;
+
+    Movie movie = movieOrNothing.Value;
+
+	// if (!movie.IsSuitableForChildren()) ... old version - calls the Method on the Movie class
+
+	// new version with Expression. We have to manually compile the Expression to a Delegate... 
+    Func<Movie,bool> isSuitableForChildren = Movie.IsSuitableForChildren.Compile();
+
+    if (!isSuitableForChildren(movie))
+    {
+        // ...
+    }
+}
+```
+
+As the comments show, the whole idea here is that we now have an `Expression` which **can** be used to generate SQL at our base Repo method layer. The old Methods couldn't be used in the Repository's `Query<Movie>()` method, which returns an `IQueryable`.
+
+Finally, the `Search()` method gets updated 
+
+```
+private void Search()
+{
+	// previous implementation of calling the Repository
+    // Movies = _repository.GetList(ForKidsOnly, MinimumRating, OnCD);
+
+	// new implementation using our Expressions
+    // here is where our refactor falls apart..
+    Expression<Func<Movie, bool>> expression = ForKidsOnly ? Movie.IsSuitableForChildren : x => true;
+
+    Movies = _repository.GetList(expression);
+
+    Notify(nameof(Movies));
+}
+```
+The 2 major drawbacks are that:
+
+1. We're only passing in 1 Expression, so we have no easy way to combine the Expressions together for dynamic filtering. 
+2. We have to compile the Expression into a Delegate in the client code. Gnarly.

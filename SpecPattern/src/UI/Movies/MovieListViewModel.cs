@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Windows;
 using CSharpFunctionalExtensions;
 using Logic.Movies;
@@ -38,7 +39,9 @@ namespace UI.Movies
                 return;
 
             Movie movie = movieOrNothing.Value;
-            if (movie.ReleaseDate >= DateTime.Now.AddMonths(-6))
+            Func<Movie, bool> hasCdVersion = Movie.HasCDVersion.Compile();
+
+            if (!hasCdVersion(movie))
             {
                 MessageBox.Show("The movie doesn't have a CD version", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
@@ -56,7 +59,10 @@ namespace UI.Movies
                 return;
 
             Movie movie = movieOrNothing.Value;
-            if (!movie.IsSuitableForChildren())
+
+            Func<Movie,bool> isSuitableForChildren = Movie.IsSuitableForChildren.Compile();
+
+            if (!isSuitableForChildren(movie))
             {
                 MessageBox.Show("The movie is not suitable for children", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
@@ -75,7 +81,11 @@ namespace UI.Movies
 
         private void Search()
         {
-            Movies = _repository.GetList(ForKidsOnly, MinimumRating, OnCD);
+            // here is where our refactor falls apart..
+
+            Expression<Func<Movie, bool>> expression = ForKidsOnly ? Movie.IsSuitableForChildren : x => true;
+            Movies = _repository.GetList(expression);
+            //Movies = _repository.GetList(ForKidsOnly, MinimumRating, OnCD);
             Notify(nameof(Movies));
         }
     }
