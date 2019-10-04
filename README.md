@@ -218,4 +218,18 @@ if (!specification.IsSatisfiedBy(movie)) { ... }
 * Has the same problems as our first attempt.
 * Should be avoided, doesn't solve our problem.
 
+## The IQueryable debate
+This is a hot topic which I've read countless articles, watched videos, and had many watercooler chats about. 
+
+> Why not just return `IQueryable` from your repository? 
+
+At first glance, the pros seem to outweigh the cons. 
+
+* You're being very generic, and putting the earnest in the client callers hands
+* No need for complex Expressions, Specifications, etc
+* Instead of returning IEnumerable, which will pull down the entire table into memory, you can let your client specify their exact condition, including the columns they want to pull down, to generate the best possible SQL
+
+The author of this course is in the "never return IQueryable from a public interface" camp. Steve Smith has a great episode of Weekly Dev Tips discussing this topic.
+
+https://www.weeklydevtips.com/episodes/024
 
