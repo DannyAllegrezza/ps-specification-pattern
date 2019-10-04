@@ -19,12 +19,12 @@ namespace Logic.Movies
             }
         }
 
-        public IReadOnlyList<Movie> GetList(GenericSpecification<Movie> specification)
+        public IReadOnlyList<Movie> GetList(Specification<Movie> specification)
         {
             using (ISession session = SessionFactory.OpenSession())
             {
                 return session.Query<Movie>()
-                    .Where(specification.Expression)
+                    .Where(specification.ToExpression())
                     .ToList();
             }
         }

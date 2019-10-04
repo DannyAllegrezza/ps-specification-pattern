@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Windows;
 using CSharpFunctionalExtensions;
 using Logic.Movies;
+using Logic.Movies.Specifications;
 using UI.Common;
 
 namespace UI.Movies
@@ -40,7 +41,7 @@ namespace UI.Movies
 
             Movie movie = movieOrNothing.Value;
 
-            var specification = new GenericSpecification<Movie>(x => x.ReleaseDate <= DateTime.Now.AddMonths(-6));
+            var specification = new AvailableOnCDSpecification();
 
             if (!specification.IsSatisfiedBy(movie))
             {
@@ -61,7 +62,7 @@ namespace UI.Movies
 
             Movie movie = movieOrNothing.Value;
 
-            var specification = new GenericSpecification<Movie>(x => x.MpaaRating <= MpaaRating.PG);
+            var specification = new MoviesForKidsSpecification();
 
             if (!specification.IsSatisfiedBy(movie))
             {
@@ -82,9 +83,7 @@ namespace UI.Movies
 
         private void Search()
         {
-            var specification = new GenericSpecification<Movie>(x => x.MpaaRating <= MpaaRating.PG);
-            // or pass in the Expression we defined on the movie class..
-            // var specification = new GenericSpecification<Movie>(Movie.HasCDVersion);
+            var specification = new MoviesForKidsSpecification();
 
             Movies = _repository.GetList(specification);
 
