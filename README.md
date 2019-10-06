@@ -233,3 +233,53 @@ The author of this course is in the "never return IQueryable from a public inter
 
 https://www.weeklydevtips.com/episodes/024
 
+## Attempt 3: The Specification class
+
+In this attempt, we implement the Specification pattern in a way that is encapsulated and type safe.
+
+```
+public abstract class Specification<T>
+{
+    public bool IsSatisfiedBy(T entity)
+    {
+        Func<T, bool> predicate = ToExpression().Compile();
+        return predicate(entity);
+    }
+
+    /// <summary>
+    /// Making this abstract requires inheriting classes to provide the implementation of this method.
+    /// </summary>
+    /// <returns></returns>
+    public abstract Expression<Func<T, bool>> ToExpression();
+}
+
+namespace Logic.Movies.Specifications
+{
+    public sealed class AvailableOnCDSpecification : Specification<Movie>
+    {
+        private const int MonthsBeforeDVDIsOut = 6;
+        public override Expression<Func<Movie, bool>> ToExpression()
+        {
+
+            return x => x.ReleaseDate <= DateTime.Now.AddMonths(-MonthsBeforeDVDIsOut);
+        }
+    }
+}
+
+namespace Logic.Movies.Specifications
+{
+    public class MoviesForKidsSpecification : Specification<Movie>
+    {
+        public override Expression<Func<Movie, bool>> ToExpression()
+        {
+            return movie => movie.MpaaRating <= MpaaRating.PG;
+        }
+    }
+}
+
+```
+
+#### Guidelines
+* Be as "specific" as possible
+* Avoid making an ISpecification interface - YAGNI
+* Make specifications immutable
